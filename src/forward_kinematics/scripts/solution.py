@@ -125,7 +125,11 @@ class ForwardKinematics(object):
     def compute_transforms(self, link_names, joints, joint_values):
         all_transforms = tf.msg.tfMessage()
         # We start with the identity
-        T = tf.transformations.identity_matrix()
+        for i, l in enumerate(link_names):
+            T = tf.transformations.translation_matrix([0, 0, i])
+            all_transforms.transforms.append(
+                convert_to_message(T, l, 'world_link')
+            )
         
         # YOUR CODE GOES HERE
         
