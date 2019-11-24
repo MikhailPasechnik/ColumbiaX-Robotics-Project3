@@ -8,6 +8,7 @@ from sensor_msgs.msg import JointState
 import tf
 import tf.msg
 from urdf_parser_py.urdf import URDF
+import tf.transformations as tft
 
 """ Starting from a computed transform T, creates a message that can be
 communicated over the ROS wire. In addition to the transform itself, the message
@@ -121,18 +122,23 @@ class ForwardKinematics(object):
     "world_link" coordinate frame to each of the coordinate frames listed in "link_names". You can use the
     "convert_to_message" function (defined above) for a convenient way to create a tf message from a 
     transformation matrix.
-    """    
+    """
     def compute_transforms(self, link_names, joints, joint_values):
         all_transforms = tf.msg.tfMessage()
         # We start with the identity
+        T = tf.transformations.translation_matrix([
+            0, 0, 0
+        ])
         for i, l in enumerate(link_names):
-            T = tf.transformations.translation_matrix([0, 0, i])
-            all_transforms.transforms.append(
-                convert_to_message(T, l, 'world_link')
-            )
-        
-        # YOUR CODE GOES HERE
-        
+            joint = self.robot.joint_map[self.robot.parent_map[l][0]]
+            # print "Processing: %s %s %s" % (joint.axis, joint.name, l)
+            T = T.dot(tft.translation_matrix(joint.origin.position))
+            if joint.type != 'fixed':
+                joint_value = joint_values.position[joint_values.name.index(joint.name)]
+                tft.quaternion_about_axis(joint_value, joint.axis)
+                R = tft.quaternion_matrix(tft.quaternion_about_axis(joint_value, joint.axis))
+                T = T.dot(R)
+            all_transforms.transforms.append(convert_to_message(T, l, 'world_link'))
         return all_transforms
        
 if __name__ == '__main__':
